@@ -1,0 +1,6 @@
+{
+  "name": "LeadFlow CRM - German Mortgage Broker Platform",
+  "description": "Multi-tenant B2B SaaS CRM for German mortgage brokers to automate expat leads, accelerate pipeline velocity, and securely manage BaFin & GDPR compliant documents.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
