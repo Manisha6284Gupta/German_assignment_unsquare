@@ -126,51 +126,6 @@ npm start
 ---
 
 
-# AI Prompt Log - LeadFlow CRM (German Mortgage Broker Platform)
-
-This file documents the iterative prompt history and engineering workflows utilized during the development of this MERN stack application, in compliance with submission guidelines.
-
----
-
-### 1. Project Initialization & Structure Setup
-* **Context:** Initializing a cloned GitHub repository containing a unified monorepo structure.
-* **Prompt:** 
-  > "how to run MERN stack project frontend and backend if project clone from github"
-
----
-
-### 2. Dependency Management & ERESOLVE Conflict Resolution
-* **Context:** Resolving npm package installation conflicts between Vite, esbuild, and Tailwind CSS.
-* **Prompt:** 
-  > "PS C:\Users\Manisha\Downloads\leadflow-unsquare> npm install [error logs provided showing ERESOLVE peer dependency mismatch]"
-
----
-
-### 3. Environment Configuration & Windows Compatibility
-* **Context:** Configuring backend startup scripts and environment variables (`PORT`, `STANDALONE_BACKEND`, and MongoDB connection strings) on a Windows PowerShell environment.
-* **Prompt:** 
-  > "'PORT' is not recognized as an internal or external command, operable program or batch file."
-
----
-
-### 4. Database Architecture & MongoDB Atlas Setup
-* **Context:** Transitioning from the fallback in-memory document repository to a live cloud database instance.
-* **Prompt:** 
-  > "MERN Stack] Initializing Mongoose connection to: mongodb://127.0.0.1:27017/leadflow... but i want to use mongodb atlas"
-
----
-
-### 5. Git Merge Conflict Resolution
-* **Context:** Synchronizing local repository branches with remote GitHub commits after a divergence in `README.md`.
-* **Prompt:** 
-  > "Your branch and 'origin/main' have diverged... Both modified: README.md"
-
----
-
-### 6. Document Upload Architecture & Database Modeling
-* **Context:** Designing a robust backend and database schema to handle 12 mandatory regulatory documents (payslips, SCHUFA reports, tax certificates) with OCR metadata tracking.
-* **Prompt:** 
-  > "client has to upload 12 documents how to store in the mongodb atlas database properly write prompt for it"
 
 ## 📄 License
 Copyright © 2026 LeadFlow CRM Technologies GmbH. All rights reserved.
