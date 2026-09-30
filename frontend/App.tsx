@@ -168,6 +168,65 @@ export default function App() {
     showToast(`Switched session to borrower ${deal.clientName} for case ${deal.id}`);
   };
 
+  const [impersonatingSuperAdmin, setImpersonatingSuperAdmin] = useState(false);
+
+  const handleEnterTenant = (subdomain: string) => {
+    setImpersonatingSuperAdmin(true);
+    if (subdomain === 'berlin-expats') {
+      setCurrentUser({
+        id: 'USR-ADVISOR-02',
+        name: 'Laura Weimann',
+        email: 'laura@berlin-expats.de',
+        role: 'brokerage_admin',
+        roleTitle: 'Branch Lead & Senior Advisor',
+        brokerageName: 'Berlin Expat Lending Group GmbH',
+        subdomain: 'berlin-expats',
+        avatar: '/frontend/assets/images/avatar_product_manager_1790659859501.jpg'
+      });
+      showToast(`Entered tenant workspace: Berlin Expat Lending (berlin-expats.leadflowcrm.de)`);
+    } else if (subdomain === 'frankfurt-prime') {
+      setCurrentUser({
+        id: 'USR-FRANKFURT-01',
+        name: 'Johannes Keller',
+        email: 'johannes@frankfurt-prime.de',
+        role: 'brokerage_admin',
+        roleTitle: 'Managing Director',
+        brokerageName: 'Frankfurt Prime Capital & Hypotheken',
+        subdomain: 'frankfurt-prime',
+        avatar: '/frontend/assets/images/avatar_team_lead_1790659845812.jpg'
+      });
+      showToast(`Entered tenant workspace: Frankfurt Prime (frankfurt-prime.leadflowcrm.de)`);
+    } else {
+      setCurrentUser({
+        id: 'USR-BROKER-01',
+        name: 'Maximilian Bauer',
+        email: 'maximilian@bavaria-finops.de',
+        role: 'brokerage_admin',
+        roleTitle: 'Managing Partner & Licensee',
+        brokerageName: 'Bavaria FinOps Partners',
+        subdomain: 'bavaria-finops',
+        avatar: '/frontend/assets/images/avatar_team_lead_1790659845812.jpg'
+      });
+      showToast(`Entered tenant workspace: Bavaria FinOps (bavaria-finops.leadflowcrm.de)`);
+    }
+    setShowPublicSite(false);
+  };
+
+  const handleReturnToSuperAdmin = () => {
+    setImpersonatingSuperAdmin(false);
+    setCurrentUser({
+      id: 'USR-SUPERADMIN-01',
+      name: 'Platform SuperAdmin',
+      email: 'admin@leadflowcrm.de',
+      role: 'platform_admin',
+      roleTitle: 'Global Infrastructure Root',
+      brokerageName: 'LeadFlow CRM Cloud Master',
+      subdomain: 'platform-master',
+      avatar: '/frontend/assets/images/avatar_platform_engineer_1790659873099.jpg'
+    });
+    showToast('Returned to Global SuperAdmin Platform Cockpit.');
+  };
+
   const scrollToPipeline = () => {
     setShowPublicSite(true);
     setTimeout(() => {
@@ -179,6 +238,28 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#070D1E] text-slate-100 font-sans selection:bg-cyan-500/20 selection:text-cyan-300">
       
+      {/* SuperAdmin Impersonation Banner */}
+      {impersonatingSuperAdmin && currentUser && (
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 flex items-center justify-between text-xs backdrop-blur-md sticky top-0 z-50">
+          <div className="flex items-center gap-2 text-amber-300">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            <span className="font-semibold">
+              SuperAdmin Tenant Impersonation Mode:
+            </span>
+            <span className="text-slate-200">
+              Active in <strong className="text-white">{currentUser.brokerageName}</strong> (<code className="text-cyan-300">{currentUser.subdomain}.leadflowcrm.de</code>)
+            </span>
+          </div>
+
+          <button
+            onClick={handleReturnToSuperAdmin}
+            className="px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow cursor-pointer"
+          >
+            <span>&larr; Exit to Platform SuperAdmin Cockpit</span>
+          </button>
+        </div>
+      )}
+
       {/* Floating View Switcher (For Authenticated Users) */}
       {currentUser && (
         <div className="fixed bottom-6 left-6 z-40 bg-slate-900/90 border border-slate-700/80 rounded-2xl p-1.5 shadow-2xl backdrop-blur-md flex items-center gap-1">
@@ -216,9 +297,7 @@ export default function App() {
           {currentUser.role === 'platform_admin' && (
             <PlatformAdminDashboard
               currentUser={currentUser}
-              onOpenTenantWorkspace={() => {
-                showToast(`Switched into tenant workspace: ${currentUser.subdomain}.leadflowcrm.de`);
-              }}
+              onOpenTenantWorkspace={handleEnterTenant}
               onViewLandingPage={() => setShowPublicSite(true)}
               onLogout={handleLogout}
             />
@@ -342,6 +421,7 @@ export default function App() {
       <PlatformAdminModal
         isOpen={isPlatformAdminOpen}
         onClose={() => setIsPlatformAdminOpen(false)}
+        onSwitchTenant={handleEnterTenant}
       />
 
       <DossierModal

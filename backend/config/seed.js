@@ -31,7 +31,7 @@ export const seedDatabase = async () => {
       console.log('🏢 [Seed] Seeded Berlin Expat Lending Group brokerage');
     }
 
-    // 2. Seed the 4 Pre-Seeded Default Role Personas
+    // 2. Seed Default Users & Advisors into MongoDB
     const defaultUsers = [
       {
         name: 'SaaS Infrastructure Admin',
@@ -54,17 +54,41 @@ export const seedDatabase = async () => {
         subdomain: bavariaBrokerage.subdomain,
         avatar: '/frontend/assets/images/avatar_team_lead_1790659845812.jpg',
       },
+      // 3 Bavaria FinOps Advisors
       {
         name: 'Laura Weimann',
-        email: 'laura@berlin-expats.de',
+        email: 'laura@bavaria-finops.de',
         passwordHash: 'Berlin#2026!',
         role: 'advisor',
-        roleTitle: 'Senior Mortgage Advisor',
-        brokerageId: berlinBrokerage._id,
-        brokerageName: berlinBrokerage.name,
-        subdomain: berlinBrokerage.subdomain,
+        roleTitle: 'Senior Expat Mortgage Advisor',
+        brokerageId: bavariaBrokerage._id,
+        brokerageName: bavariaBrokerage.name,
+        subdomain: 'bavaria-finops',
         avatar: '/frontend/assets/images/avatar_product_manager_1790659859501.jpg',
       },
+      {
+        name: 'Markus Eder',
+        email: 'markus.eder@bavaria-finops.de',
+        passwordHash: 'Bavaria#2026!',
+        role: 'advisor',
+        roleTitle: 'Commercial & Residential Broker',
+        brokerageId: bavariaBrokerage._id,
+        brokerageName: bavariaBrokerage.name,
+        subdomain: 'bavaria-finops',
+        avatar: '/frontend/assets/images/avatar_team_lead_1790659845812.jpg',
+      },
+      {
+        name: 'Elena Rostova',
+        email: 'elena.rostova@bavaria-finops.de',
+        passwordHash: 'Bavaria#2026!',
+        role: 'advisor',
+        roleTitle: 'Relocation & EU Blue Card Specialist',
+        brokerageId: bavariaBrokerage._id,
+        brokerageName: bavariaBrokerage.name,
+        subdomain: 'bavaria-finops',
+        avatar: '/frontend/assets/images/avatar_product_manager_1790659859501.jpg',
+      },
+      // Borrower Client
       {
         name: 'Alexander & Maya Lindqvist',
         email: 'alexander.lindqvist@gmail.com',

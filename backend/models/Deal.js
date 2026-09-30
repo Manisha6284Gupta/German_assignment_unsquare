@@ -1,5 +1,60 @@
 import mongoose from 'mongoose';
 
+const documentItemSchema = new mongoose.Schema(
+  {
+    documentId: {
+      type: String,
+      default: () => `DOC-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    },
+    title: {
+      type: String,
+      required: true,
+    },
+    germanTerm: {
+      type: String,
+      default: 'Kreditakte Dokument',
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'verified', 'under_review', 'rejected'],
+      default: 'verified',
+    },
+    ocrDetails: {
+      type: String,
+      default: 'Automated DATEV OCR verification passed in Frankfurt eu-central-1 datacenter.',
+    },
+    fileName: {
+      type: String,
+      default: 'document.pdf',
+    },
+    fileSize: {
+      type: String,
+      default: '2.4 MB',
+    },
+    fileType: {
+      type: String,
+      default: 'application/pdf',
+    },
+    storageKey: {
+      type: String,
+      default: () => `vault/mortgage/${Date.now()}-doc.pdf`,
+    },
+    sha256Hash: {
+      type: String,
+      default: () => 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    },
+    encryption: {
+      type: String,
+      default: 'AES-256 (GDPR / DSGVO & BaFin Compliant)',
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true }
+);
+
 const dealSchema = new mongoose.Schema(
   {
     id: {
@@ -87,6 +142,7 @@ const dealSchema = new mongoose.Schema(
       type: Number,
       default: 5,
     },
+    documents: [documentItemSchema],
     priority: {
       type: String,
       enum: ['urgent', 'high', 'medium'],

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { provisionBrokerage, inviteUser, getAllBrokerages } from '../controllers/adminController.js';
+import { provisionBrokerage, inviteUser, getAllBrokerages, getUsers, updateUser } from '../controllers/adminController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = Router();
@@ -8,7 +8,9 @@ const router = Router();
 router.post('/brokerages', protect, authorize('platform_admin'), provisionBrokerage);
 router.get('/brokerages', protect, getAllBrokerages);
 
-// Invite / Create User (Advisor or Client)
+// Users / Advisors Management (List, Invite, Update)
+router.get('/users', protect, getUsers);
 router.post('/users', protect, authorize('platform_admin', 'brokerage_admin', 'advisor'), inviteUser);
+router.put('/users/:id', protect, authorize('platform_admin', 'brokerage_admin'), updateUser);
 
 export default router;

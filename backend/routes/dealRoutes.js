@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDeals, createDeal, updateDealStage } from '../controllers/dealController.js';
+import { getDeals, createDeal, updateDealStage, uploadDocument, getDealDocuments } from '../controllers/dealController.js';
 
 const router = Router();
 
@@ -9,5 +9,9 @@ router.route('/')
 
 router.route('/:id/stage')
   .patch(updateDealStage);
+
+router.route('/:id/documents')
+  .get(getDealDocuments)
+  .post(uploadDocument);
 
 export default router;

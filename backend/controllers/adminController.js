@@ -12,19 +12,101 @@ const sanitizeUser = (user) => {
   delete u.passwordHash;
   delete u.__v;
   return {
-    id: u._id ? u._id.toString() : u.id,
-    _id: u._id ? u._id.toString() : u.id,
+    id: u._id ? u._id.toString() : (u.id || generateObjectId()),
+    _id: u._id ? u._id.toString() : (u.id || generateObjectId()),
     name: u.name,
     email: u.email,
     role: u.role,
-    roleTitle: u.roleTitle,
+    roleTitle: u.roleTitle || (u.role === 'advisor' ? 'Senior Expat Mortgage Advisor' : 'Client Borrower'),
     brokerageId: u.brokerageId ? (u.brokerageId._id ? u.brokerageId._id.toString() : u.brokerageId.toString()) : null,
-    brokerageName: u.brokerageName,
-    subdomain: u.subdomain,
+    brokerageName: u.brokerageName || 'Bavaria FinOps Partners',
+    subdomain: u.subdomain || 'bavaria-finops',
     dealId: u.dealId || null,
     avatar: u.avatar,
     createdAt: u.createdAt,
   };
+};
+
+// @desc    Get all users / advisors (Optionally scoped to tenant subdomain or role)
+// @route   GET /api/brokerage/users or GET /api/admin/users
+// @access  Private
+export const getUsers = async (req, res) => {
+  try {
+    const { role, subdomain } = req.query;
+    const filter = {};
+
+    if (role && role !== 'all') {
+      filter.role = role;
+    }
+    if (subdomain && subdomain !== 'all') {
+      filter.subdomain = subdomain;
+    }
+
+    let users = [];
+    try {
+      users = await User.find(filter).sort({ createdAt: 1 });
+    } catch {
+      // In case of memory fallback
+    }
+
+    // Auto-seed default Bavaria FinOps advisors in DB if not already present
+    if ((!role || role === 'advisor') && (!subdomain || subdomain === 'bavaria-finops')) {
+      const defaultAdvisors = [
+        {
+          name: 'Laura Weimann',
+          email: 'laura@bavaria-finops.de',
+          passwordHash: 'Berlin#2026!',
+          role: 'advisor',
+          roleTitle: 'Senior Expat Mortgage Advisor',
+          brokerageName: 'Bavaria FinOps Partners',
+          subdomain: 'bavaria-finops',
+          avatar: '/frontend/assets/images/avatar_product_manager_1790659859501.jpg',
+        },
+        {
+          name: 'Markus Eder',
+          email: 'markus.eder@bavaria-finops.de',
+          passwordHash: 'Bavaria#2026!',
+          role: 'advisor',
+          roleTitle: 'Commercial & Residential Broker',
+          brokerageName: 'Bavaria FinOps Partners',
+          subdomain: 'bavaria-finops',
+          avatar: '/frontend/assets/images/avatar_team_lead_1790659845812.jpg',
+        },
+        {
+          name: 'Elena Rostova',
+          email: 'elena.rostova@bavaria-finops.de',
+          passwordHash: 'Bavaria#2026!',
+          role: 'advisor',
+          roleTitle: 'Relocation & EU Blue Card Specialist',
+          brokerageName: 'Bavaria FinOps Partners',
+          subdomain: 'bavaria-finops',
+          avatar: '/frontend/assets/images/avatar_product_manager_1790659859501.jpg',
+        },
+      ];
+
+      for (const adv of defaultAdvisors) {
+        const found = users.find(u => u.email === adv.email);
+        if (!found) {
+          try {
+            const created = await User.create(adv);
+            users.unshift(created);
+          } catch {
+            // Already created
+          }
+        }
+      }
+    }
+
+    const sanitized = users.map(sanitizeUser);
+
+    res.status(200).json({
+      success: true,
+      count: sanitized.length,
+      data: sanitized,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 // @desc    Provision a new Brokerage Workspace & Initial Brokerage Admin (Platform Admin Only)
@@ -129,7 +211,7 @@ export const provisionBrokerage = async (req, res) => {
       newAdminUser = await User.create({
         name: adminName ? adminName.trim() : `${name} Admin`,
         email: cleanAdminEmail,
-        passwordHash: rawPassword, // userSchema pre-save hook handles bcrypt hashing
+        passwordHash: rawPassword,
         role: 'brokerage_admin',
         roleTitle: 'Managing Partner & Licensee',
         brokerageId: newBrokerage._id,
@@ -187,7 +269,7 @@ export const provisionBrokerage = async (req, res) => {
 // @access  Private (brokerage_admin, advisor, platform_admin)
 export const inviteUser = async (req, res) => {
   try {
-    const { name, email, password, role, dealId, roleTitle } = req.body;
+    const { name, email, password, role, dealId, roleTitle, subdomain, brokerageName } = req.body;
 
     // 1. Validate payload
     if (!name || !email) {
@@ -208,11 +290,11 @@ export const inviteUser = async (req, res) => {
       });
     }
 
-    // 3. Determine Tenant Scoping from Requester
+    // 3. Determine Tenant Scoping from Requester or Request Body
     const requester = req.user || {};
     const scopedBrokerageId = requester.brokerageId ? (requester.brokerageId._id || requester.brokerageId) : null;
-    const scopedBrokerageName = requester.brokerageName || 'Bavaria FinOps Partners';
-    const scopedSubdomain = requester.subdomain || 'bavaria-finops';
+    const scopedBrokerageName = brokerageName || requester.brokerageName || 'Bavaria FinOps Partners';
+    const scopedSubdomain = subdomain || requester.subdomain || 'bavaria-finops';
 
     // 4. Duplicate Check
     let existingUser = null;
@@ -229,7 +311,7 @@ export const inviteUser = async (req, res) => {
       });
     }
 
-    // 5. Create & Save User Document
+    // 5. Create & Save User Document in MongoDB Atlas
     const rawPassword = password || (targetRole === 'client' ? `Client#${dealId ? dealId.replace(/[^0-9]/g, '') : '8491'}!` : 'Berlin#2026!');
     
     let createdUser;
@@ -289,6 +371,90 @@ export const inviteUser = async (req, res) => {
   }
 };
 
+// @desc    Update an existing User / Advisor Profile
+// @route   PUT /api/brokerage/users/:id
+// @access  Private (brokerage_admin, platform_admin)
+export const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, role, roleTitle, bafinLicense, password, status } = req.body;
+    const requester = req.user || {};
+
+    // 1. Find user
+    let user = null;
+    try {
+      if (id.match(/^[0-9a-fA-F]{24}$/)) {
+        user = await User.findById(id);
+      }
+      if (!user) {
+        user = await User.findOne({ $or: [{ _id: id }, { email: email?.toLowerCase().trim() }] });
+      }
+    } catch {
+      // In case of memory fallback
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: `User with identifier '${id}' not found in MongoDB Atlas.`,
+      });
+    }
+
+    // 2. Tenant isolation check
+    if (requester.role !== 'platform_admin') {
+      const requesterSubdomain = requester.subdomain || 'bavaria-finops';
+      if (user.subdomain && user.subdomain !== requesterSubdomain) {
+        return res.status(403).json({
+          success: false,
+          message: 'Tenant Security Violation: Cannot modify staff outside your brokerage workspace.',
+        });
+      }
+    }
+
+    // 3. Apply updates
+    if (name) user.name = name.trim();
+    if (email) user.email = email.toLowerCase().trim();
+    if (role && ['advisor', 'client', 'brokerage_admin'].includes(role)) {
+      user.role = role;
+    }
+    if (roleTitle) user.roleTitle = roleTitle.trim();
+    if (status !== undefined) {
+      user.isActive = status === 'active';
+    }
+
+    // 4. Password re-hash if provided
+    if (password && password.trim().length > 0) {
+      const salt = await bcrypt.genSalt(10);
+      user.passwordHash = await bcrypt.hash(password.trim(), salt);
+    }
+
+    if (user.save) {
+      await user.save();
+    }
+
+    // 5. Record BaFin compliance audit log
+    await ActivityLog.logActivity(
+      'USER_PROFILE_UPDATED',
+      'User',
+      user._id ? user._id.toString() : id,
+      `Updated user profile '${user.name}' (${user.email}) - role: '${user.roleTitle || user.role}'`,
+      requester.name || 'Brokerage Admin'
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `User '${user.name}' profile successfully updated in MongoDB Atlas.`,
+      data: sanitizeUser(user),
+    });
+  } catch (error) {
+    console.error('❌ [AdminController Error in updateUser]:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error while updating user.',
+    });
+  }
+};
+
 // @desc    Get all brokerages list
 // @route   GET /api/admin/brokerages
 // @access  Private (platform_admin)
@@ -312,7 +478,9 @@ export const getAllBrokerages = async (req, res) => {
 };
 
 export default {
+  getUsers,
   provisionBrokerage,
   inviteUser,
+  updateUser,
   getAllBrokerages,
 };

@@ -1,5 +1,6 @@
 import database, { generateObjectId } from '../config/db.js';
 import ActivityLog from '../models/ActivityLog.js';
+import seedDatabase from '../config/seed.js';
 
 // @desc    Handle demo requests from SaaS landing page
 // @route   POST /api/demo/request
@@ -53,4 +54,22 @@ export const requestDemo = async (req, res) => {
   }
 };
 
-export default requestDemo;
+// @desc    Trigger database auto-seeding on demand
+// @route   POST /api/demo/seed
+// @access  Public
+export const triggerSeed = async (req, res) => {
+  try {
+    await seedDatabase();
+    res.status(200).json({
+      success: true,
+      message: 'Database auto-seed executed successfully with default brokerages, personas, and deals.',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Auto-seed failed',
+    });
+  }
+};
+
+export default { requestDemo, triggerSeed };

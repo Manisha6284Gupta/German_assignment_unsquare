@@ -37,6 +37,8 @@ export interface InviteUserPayload {
   role: 'advisor' | 'client';
   dealId?: string;
   roleTitle?: string;
+  subdomain?: string;
+  brokerageName?: string;
 }
 
 /**
@@ -94,6 +96,25 @@ export const api = {
     });
     const data = await res.json();
     return data.data;
+  },
+
+  // Document Vault & BaFin Kreditakte
+  async uploadDocument(dealId: string, docPayload: { title: string; germanTerm?: string; fileName?: string; fileBase64?: string; fileSize?: string }): Promise<any> {
+    const token = localStorage.getItem('leadflow_auth_token');
+    const res = await fetch(`${API_BASE_URL}/deals/${dealId}/documents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(docPayload)
+    });
+    return res.json();
+  },
+
+  async getDealDocuments(dealId: string): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/deals/${dealId}/documents`);
+    return res.json();
   },
 
   // Demo
@@ -167,6 +188,35 @@ export const api = {
     const data = await res.json();
     if (!res.ok || !data.success) {
       throw new Error(data.message || 'Failed to create user account');
+    }
+    return data;
+  },
+
+  async getUsers(params?: { role?: string; subdomain?: string }): Promise<any> {
+    const token = localStorage.getItem('leadflow_auth_token');
+    const query = new URLSearchParams(params as Record<string, string>).toString();
+    const res = await fetch(`${API_BASE_URL}/brokerage/users?${query}`, {
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    });
+    const data = await res.json();
+    return data.data || [];
+  },
+
+  async updateUser(id: string, payload: Partial<InviteUserPayload & { status?: 'active' | 'onboarding' }>): Promise<any> {
+    const token = localStorage.getItem('leadflow_auth_token');
+    const res = await fetch(`${API_BASE_URL}/brokerage/users/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Failed to update user profile');
     }
     return data;
   },
