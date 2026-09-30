@@ -314,38 +314,57 @@ export const inviteUser = async (req, res) => {
     // 5. Create & Save User Document in MongoDB Atlas
     const rawPassword = password || (targetRole === 'client' ? `Client#${dealId ? dealId.replace(/[^0-9]/g, '') : '8491'}!` : 'Berlin#2026!');
     
+    const documentToSave = {
+      name: name.trim(),
+      email: cleanEmail,
+      passwordHash: rawPassword, // userSchema pre-save hook handles bcryptjs hash
+      role: targetRole,
+      roleTitle: roleTitle || (targetRole === 'advisor' ? 'Senior Mortgage Advisor' : 'Expat Borrower Client'),
+      brokerageId: scopedBrokerageId,
+      brokerageName: scopedBrokerageName,
+      subdomain: scopedSubdomain,
+      dealId: targetRole === 'client' ? (dealId || 'DEAL-8491') : null,
+      avatar: targetRole === 'client' 
+        ? '/frontend/assets/images/avatar_team_lead_1790659845812.jpg'
+        : '/frontend/assets/images/avatar_product_manager_1790659859501.jpg',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    console.log('\n📝 --------------------------------------------------------');
+    console.log('💾 [MongoDB Atlas Collection: "users"] Preparing Document Insert:');
+    console.log(JSON.stringify({
+      ...documentToSave,
+      passwordHash: '*** [BCRYPT_PRE_SAVE_HASH] ***'
+    }, null, 2));
+    console.log('--------------------------------------------------------\n');
+
     let createdUser;
     try {
-      createdUser = await User.create({
-        name: name.trim(),
-        email: cleanEmail,
-        passwordHash: rawPassword, // userSchema pre-save hook handles bcryptjs hash
-        role: targetRole,
-        roleTitle: roleTitle || (targetRole === 'advisor' ? 'Senior Mortgage Advisor' : 'Expat Borrower Client'),
-        brokerageId: scopedBrokerageId,
-        brokerageName: scopedBrokerageName,
-        subdomain: scopedSubdomain,
-        dealId: targetRole === 'client' ? (dealId || 'DEAL-8491') : null,
-        avatar: targetRole === 'client' 
-          ? '/frontend/assets/images/avatar_team_lead_1790659845812.jpg'
-          : '/frontend/assets/images/avatar_product_manager_1790659859501.jpg',
+      createdUser = await User.create(documentToSave);
+      console.log('✅ [MongoDB Atlas Document Saved Successfully]:');
+      console.log({
+        _id: createdUser._id ? createdUser._id.toString() : 'generated-id',
+        name: createdUser.name,
+        email: createdUser.email,
+        role: createdUser.role,
+        collection: 'users',
+        status: 'INSERTED_INTO_MONGODB'
       });
-    } catch {
+    } catch (saveError) {
+      console.warn('⚠️ [MongoDB Atlas Standard Insert Fallback]:', saveError.message);
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(rawPassword, salt);
       createdUser = {
         _id: generateObjectId(),
-        name: name.trim(),
-        email: cleanEmail,
+        ...documentToSave,
         passwordHash: hashedPassword,
-        role: targetRole,
-        roleTitle: roleTitle || (targetRole === 'advisor' ? 'Senior Mortgage Advisor' : 'Expat Borrower Client'),
-        brokerageId: scopedBrokerageId,
-        brokerageName: scopedBrokerageName,
-        subdomain: scopedSubdomain,
-        dealId: targetRole === 'client' ? (dealId || 'DEAL-8491') : null,
-        createdAt: new Date().toISOString(),
       };
+      console.log('✅ [Document Saved in Memory Store]:', {
+        _id: createdUser._id,
+        name: createdUser.name,
+        email: createdUser.email
+      });
     }
 
     // 6. Record Audit Log

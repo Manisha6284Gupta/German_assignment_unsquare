@@ -8,6 +8,7 @@ import adminRoutes from './adminRoutes.js';
 import User from '../models/User.js';
 import Brokerage from '../models/Brokerage.js';
 import Deal from '../models/Deal.js';
+import { testMongoConnection } from '../utils/mongoDiagnostic.js';
 
 const apiRouter = Router();
 
@@ -17,6 +18,23 @@ apiRouter.use('/demo', demoRoutes);
 apiRouter.use('/calculator', calculatorRoutes);
 apiRouter.use('/admin', adminRoutes);
 apiRouter.use('/brokerage', adminRoutes);
+
+// MongoDB Atlas Diagnostic & Ping Endpoint
+apiRouter.get('/diagnostic/mongodb', async (req, res) => {
+  const customUri = req.query.uri || null;
+  const timeoutMs = Number(req.query.timeout) || 5000;
+  const result = await testMongoConnection(customUri, timeoutMs);
+  const statusCode = result.status === 'success' ? 200 : (result.status === 'not_configured' ? 200 : 503);
+  res.status(statusCode).json(result);
+});
+
+apiRouter.post('/diagnostic/mongodb', async (req, res) => {
+  const { uri, timeout } = req.body || {};
+  const timeoutMs = Number(timeout) || 5000;
+  const result = await testMongoConnection(uri, timeoutMs);
+  const statusCode = result.status === 'success' ? 200 : (result.status === 'not_configured' ? 200 : 503);
+  res.status(statusCode).json(result);
+});
 
 // Health & Seed Status check endpoint
 apiRouter.get('/health', async (req, res) => {
@@ -54,7 +72,7 @@ apiRouter.get('/health', async (req, res) => {
       },
       availableAccounts: [
         { role: 'brokerage_admin', email: 'maximilian@bavaria-finops.de' },
-        { role: 'advisor', email: 'laura@berlin-expats.de' },
+        { role: 'advisor', email: 'laura@bavaria-finops.de' },
         { role: 'client', email: 'alexander.lindqvist@gmail.com' },
         { role: 'platform_admin', email: 'admin@leadflowcrm.de' },
       ],

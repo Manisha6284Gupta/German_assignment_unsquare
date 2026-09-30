@@ -221,6 +221,24 @@ export const api = {
     return data;
   },
 
+  // Diagnostics & Connectivity
+  async getMongoDiagnostics(customUri?: string): Promise<any> {
+    const url = customUri 
+      ? `${API_BASE_URL}/diagnostic/mongodb?uri=${encodeURIComponent(customUri)}`
+      : `${API_BASE_URL}/diagnostic/mongodb`;
+    const res = await fetch(url);
+    return res.json();
+  },
+
+  async testMongoPing(uri: string): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/diagnostic/mongodb`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uri })
+    });
+    return res.json();
+  },
+
   // Health
   async getHealth(): Promise<any> {
     const res = await fetch(`${API_BASE_URL}/health`);

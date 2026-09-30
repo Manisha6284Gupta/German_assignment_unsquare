@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   Users, 
@@ -128,9 +128,48 @@ export const PlatformAdminDashboard: React.FC<PlatformAdminDashboardProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<SuperAdminTab>('overview');
   const [brokerages, setBrokerages] = useState<BrokerageWorkspace[]>(INITIAL_BROKERAGES);
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState<any[]>(() => {
+    const saved = localStorage.getItem('leadflow_global_users');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (err) {
+        console.warn('Could not parse local users:', err);
+      }
+    }
+    return INITIAL_USERS;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [userSearchTerm, setUserSearchTerm] = useState('');
+
+  // Fetch all users across all tenants from MongoDB on mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const dbUsers = await api.getUsers();
+        if (Array.isArray(dbUsers) && dbUsers.length > 0) {
+          const formatted = dbUsers.map((u: any, idx: number) => ({
+            id: u.id || u._id || `USR-0${idx + 1}`,
+            name: u.name,
+            email: u.email,
+            role: u.role === 'platform_admin' ? 'Platform SuperAdmin' :
+                  u.role === 'brokerage_admin' ? 'Brokerage Admin' :
+                  u.role === 'advisor' ? (u.roleTitle || 'Licensed Advisor') : 'Expat Borrower',
+            brokerage: u.brokerageName || 'Bavaria FinOps Partners',
+            city: u.city || 'Munich',
+            status: u.isActive !== false ? 'Active' : 'Onboarding',
+            license: u.role === 'advisor' ? '§ 34i GewO Certified' : (u.role === 'client' ? `Client Dossier ${u.dealId || 'DEAL-8491'}` : 'System Master')
+          }));
+          setUsers(formatted);
+          localStorage.setItem('leadflow_global_users', JSON.stringify(formatted));
+        }
+      } catch (err) {
+        console.warn('Could not fetch global users from DB:', err);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   // Modals
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
@@ -216,25 +255,33 @@ export const PlatformAdminDashboard: React.FC<PlatformAdminDashboardProps> = ({
     if (!newUserName || !newUserEmail) return;
 
     try {
-      await api.inviteUser({
-        name: newUserName,
-        email: newUserEmail,
+      const selectedBrokerageObj = brokerages.find(b => b.name === selectedBrokerageForUser);
+      const targetSubdomain = selectedBrokerageObj?.subdomain || 'bavaria-finops';
+
+      const res = await api.inviteUser({
+        name: newUserName.trim(),
+        email: newUserEmail.toLowerCase().trim(),
         role: newUserRole,
         roleTitle: newUserTitle,
+        brokerageName: selectedBrokerageForUser,
+        subdomain: targetSubdomain,
+        password: 'Berlin#2026!',
       });
 
       const newUserObj = {
-        id: `USR-0${users.length + 1}`,
-        name: newUserName,
-        email: newUserEmail,
-        role: newUserRole === 'advisor' ? 'Licensed Advisor' : 'Expat Borrower',
+        id: res.data?.id || `USR-0${users.length + 1}`,
+        name: newUserName.trim(),
+        email: newUserEmail.toLowerCase().trim(),
+        role: newUserRole === 'advisor' ? (newUserTitle || 'Licensed Advisor') : 'Expat Borrower',
         brokerage: selectedBrokerageForUser,
-        city: 'Munich',
+        city: selectedBrokerageObj?.city || 'Munich',
         status: 'Active',
-        license: '§ 34i GewO Active'
+        license: newUserRole === 'advisor' ? '§ 34i GewO Active' : 'Client Dossier Created'
       };
 
-      setUsers([newUserObj, ...users]);
+      const updatedUsers = [newUserObj, ...users];
+      setUsers(updatedUsers);
+      localStorage.setItem('leadflow_global_users', JSON.stringify(updatedUsers));
       setProvisionSuccess(`User ${newUserName} successfully created and registered in MongoDB.`);
       setNewUserName('');
       setNewUserEmail('');
