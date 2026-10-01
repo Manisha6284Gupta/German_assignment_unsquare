@@ -1,6 +1,6 @@
-# 🚀 LeadFlow CRM — 15 Full-Stack Developer Prompts
+# 🚀 LeadFlow CRM — Prompts
 
-A curated collection of **15 realistic developer prompts** used to architect, build, debug, and deploy the full-stack **LeadFlow German Mortgage CRM** using **Node.js, Express, TypeScript, React 19, MongoDB Atlas, and Vercel**.
+A curated collection of ** prompts** used to architect, build, debug, and deploy the full-stack **LeadFlow German Mortgage CRM** using **Node.js, Express, TypeScript, React 19, MongoDB Atlas, and Vercel**.
 
 ---
 
