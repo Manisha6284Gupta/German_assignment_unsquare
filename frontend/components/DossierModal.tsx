@@ -12,10 +12,12 @@ import {
   KeyRound,
   ExternalLink,
   Copy,
-  Check
+  Check,
+  FileText
 } from 'lucide-react';
 import { Deal } from '../types';
 import api from '../services/api';
+import { generateAndDownloadPdfDossier } from '../utils/generatePdfDossier';
 
 interface DossierModalProps {
   deal: Deal | null;
@@ -33,6 +35,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   const [conversionResult, setConversionResult] = useState<any | null>(null);
   const [isConverting, setIsConverting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pdfNotice, setPdfNotice] = useState<string | null>(null);
 
   if (!deal) return null;
 
@@ -208,6 +211,14 @@ export const DossierModal: React.FC<DossierModalProps> = ({
             </div>
           </div>
 
+          {/* PDF Download Notice */}
+          {pdfNotice && (
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{pdfNotice}</span>
+            </div>
+          )}
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -253,11 +264,15 @@ export const DossierModal: React.FC<DossierModalProps> = ({
           
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
-              onClick={() => alert(`Generated BaFin-compliant mortgage PDF package for ${deal.clientName}`)}
-              className="px-3.5 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              onClick={() => {
+                generateAndDownloadPdfDossier(deal);
+                setPdfNotice(`📄 Downloaded official bank mortgage dossier: Finanzierungsbestaetigung_${deal.id}.pdf`);
+                setTimeout(() => setPdfNotice(null), 4000);
+              }}
+              className="px-3.5 py-2 text-xs font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
             >
               <DownloadCloud className="w-4 h-4" />
-              <span>PDF Dossier</span>
+              <span>Download PDF Dossier</span>
             </button>
 
             {!conversionResult && (

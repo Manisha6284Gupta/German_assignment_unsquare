@@ -1,6 +1,17 @@
+import mongoose from 'mongoose';
 import Deal from '../models/Deal.js';
 import ActivityLog from '../models/ActivityLog.js';
+import Document from '../models/Document.js';
 import crypto from 'crypto';
+
+// Helper to safely query Deal by either custom string id ("DEAL-8491") or 24-hex ObjectId without CastError
+const getDealQuery = (dealId) => {
+  if (!dealId) return {};
+  if (mongoose.Types.ObjectId.isValid(dealId) && String(new mongoose.Types.ObjectId(dealId)) === String(dealId)) {
+    return { $or: [{ id: dealId }, { _id: dealId }] };
+  }
+  return { id: String(dealId) };
+};
 
 // Fallback initial deals
 const FALLBACK_DEALS = [
@@ -196,7 +207,7 @@ export const updateDealStage = async (req, res) => {
     let deal = null;
     try {
       deal = await Deal.findOneAndUpdate(
-        { $or: [{ id: dealId }, { _id: dealId }] },
+        getDealQuery(dealId),
         { stage },
         { new: true }
       );
@@ -255,16 +266,30 @@ export const uploadDocument = async (req, res) => {
 
     let deal = null;
     try {
+      // Save directly to MongoDB Document collection
+      await Document.create({
+        dealId,
+        name: title,
+        category: germanTerm || 'Income Proof',
+        status: 'verified',
+        isReady: true,
+        ocrConfidence: 99.7,
+        fileName: newDoc.fileName,
+        fileSize: newDoc.fileSize,
+        extractedDetails: newDoc.ocrDetails,
+        sha256Hash: newDoc.sha256Hash
+      });
+
       deal = await Deal.findOneAndUpdate(
-        { $or: [{ id: dealId }, { _id: dealId }] },
+        getDealQuery(dealId),
         { 
           $push: { documents: newDoc },
           $inc: { docsReady: 1 }
         },
         { new: true }
       );
-    } catch {
-      // Offline fallback mode
+    } catch (err) {
+      console.warn('⚠️ [MongoDB Document Write]:', err.message);
     }
 
     await ActivityLog.logActivity(
@@ -298,7 +323,7 @@ export const getDealDocuments = async (req, res) => {
     const dealId = req.params.id;
     let deal = null;
     try {
-      deal = await Deal.findOne({ $or: [{ id: dealId }, { _id: dealId }] });
+      deal = await Deal.findOne(getDealQuery(dealId));
     } catch {
       // Fallback
     }

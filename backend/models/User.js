@@ -66,14 +66,17 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Encrypt password using bcryptjs before saving
-userSchema.pre('save', async function (next) {
+// Encrypt password using bcryptjs before saving (modern async hook without callback conflict)
+userSchema.pre('save', async function () {
   if (!this.isModified('passwordHash')) {
-    return next();
+    return;
+  }
+  // Avoid double hashing if already a bcrypt string
+  if (typeof this.passwordHash === 'string' && (this.passwordHash.startsWith('$2a$') || this.passwordHash.startsWith('$2b$'))) {
+    return;
   }
   const salt = await bcrypt.genSalt(10);
   this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
-  next();
 });
 
 // Compare candidate password against hash

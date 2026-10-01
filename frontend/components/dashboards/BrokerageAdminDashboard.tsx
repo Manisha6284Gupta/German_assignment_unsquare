@@ -230,13 +230,38 @@ export const BrokerageAdminDashboard: React.FC<BrokerageAdminDashboardProps> = (
   const [brokerCommissionPct, setBrokerCommissionPct] = useState<number>(1.0);
   const [agencySplitPct, setAgencySplitPct] = useState<number>(30); // 30% agency override, 70% broker
 
-  // Email Template Configuration State
-  const [welcomeEmailSubject, setWelcomeEmailSubject] = useState('Welcome to your Bavaria FinOps Mortgage Vault – Case Reference');
-  const [welcomeEmailBody, setWelcomeEmailBody] = useState(
-    'Guten Tag {{client_name}},\n\nYour mortgage application for {{property_city}} (€{{loan_amount}}) has been initialized. Please use your secure link below to upload your 3 recent German payslips (Gehaltsabrechnungen) and Schufa certificate.\n\nBest regards,\n{{advisor_name}} | Bavaria FinOps Partners'
-  );
-  const [autoReminderDays, setAutoReminderDays] = useState<number>(3);
-  const [autoSmsEnabled, setAutoSmsEnabled] = useState<boolean>(true);
+  // Email Template Configuration State (with LocalStorage persistence)
+  const [welcomeEmailSubject, setWelcomeEmailSubject] = useState(() => {
+    try {
+      const saved = localStorage.getItem('leadflow_automation_rules');
+      if (saved) return JSON.parse(saved).welcomeEmailSubject || 'Welcome to your Bavaria FinOps Mortgage Vault – Case Reference';
+    } catch {}
+    return 'Welcome to your Bavaria FinOps Mortgage Vault – Case Reference';
+  });
+
+  const [welcomeEmailBody, setWelcomeEmailBody] = useState(() => {
+    try {
+      const saved = localStorage.getItem('leadflow_automation_rules');
+      if (saved) return JSON.parse(saved).welcomeEmailBody || 'Guten Tag {{client_name}},\n\nYour mortgage application for {{property_city}} (€{{loan_amount}}) has been initialized. Please use your secure link below to upload your 3 recent German payslips (Gehaltsabrechnungen) and Schufa certificate.\n\nBest regards,\n{{advisor_name}} | Bavaria FinOps Partners';
+    } catch {}
+    return 'Guten Tag {{client_name}},\n\nYour mortgage application for {{property_city}} (€{{loan_amount}}) has been initialized. Please use your secure link below to upload your 3 recent German payslips (Gehaltsabrechnungen) and Schufa certificate.\n\nBest regards,\n{{advisor_name}} | Bavaria FinOps Partners';
+  });
+
+  const [autoReminderDays, setAutoReminderDays] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('leadflow_automation_rules');
+      if (saved) return JSON.parse(saved).autoReminderDays || 3;
+    } catch {}
+    return 3;
+  });
+
+  const [autoSmsEnabled, setAutoSmsEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('leadflow_automation_rules');
+      if (saved) return JSON.parse(saved).autoSmsEnabled ?? true;
+    } catch {}
+    return true;
+  });
 
   // Calculated Metrics
   const totalTeamVolume = (avgLoan * dealsPerBroker * team.length);
@@ -306,8 +331,16 @@ export const BrokerageAdminDashboard: React.FC<BrokerageAdminDashboardProps> = (
   };
 
   const handleSaveTemplates = () => {
-    setSaveNotice('Automated email templates and 3-day OCR reminder triggers updated successfully.');
-    setTimeout(() => setSaveNotice(null), 3500);
+    const automationConfig = {
+      welcomeEmailSubject,
+      welcomeEmailBody,
+      autoReminderDays,
+      autoSmsEnabled,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem('leadflow_automation_rules', JSON.stringify(automationConfig));
+    setSaveNotice(`✅ Automation Rules Saved: Welcome email configured, document reminder cadence set to every ${autoReminderDays} days, and SMS pre-approval alerts ${autoSmsEnabled ? 'ENABLED' : 'DISABLED'}.`);
+    setTimeout(() => setSaveNotice(null), 4500);
   };
 
   return (

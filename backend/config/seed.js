@@ -1,9 +1,17 @@
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Brokerage from '../models/Brokerage.js';
 import Deal from '../models/Deal.js';
+import Document from '../models/Document.js';
 
 export const seedDatabase = async () => {
   try {
+    // If not connected to a live MongoDB Atlas instance, skip Mongoose query buffering
+    if (mongoose.connection.readyState !== 1) {
+      console.log('ℹ️ [LeadFlow Database Store]: Ready in resilient local memory mode.');
+      return;
+    }
+
     // 1. Seed or find default German Brokerages
     let bavariaBrokerage = await Brokerage.findOne({ subdomain: 'bavaria-finops' });
     if (!bavariaBrokerage) {
@@ -184,6 +192,70 @@ export const seedDatabase = async () => {
         await Deal.create(d);
       }
       console.log('📊 [Seed] Seeded initial mortgage deals into MongoDB');
+    }
+
+    // 4. Seed initial documents into MongoDB Document collection
+    const existingDocsCount = await Document.countDocuments();
+    if (existingDocsCount === 0) {
+      const initialVaultDocs = [
+        {
+          dealId: 'DEAL-8491',
+          brokerageId: bavariaBrokerage._id,
+          name: '3-Months Gehaltsabrechnung (Salary Slips)',
+          category: 'Income & Employment',
+          status: 'verified',
+          isReady: true,
+          ocrConfidence: 99.8,
+          fileName: 'gehaltsabrechnungen_oct_dec_2025.pdf',
+          fileSize: '2.4 MB',
+          extractedDetails: 'DATEV OCR: €9,400.00 Net Income verified across Oct, Nov, Dec 2025',
+          sha256Hash: 'a8f3b20c9103e87d12cf8841a01129bc782910fa'
+        },
+        {
+          dealId: 'DEAL-8491',
+          brokerageId: bavariaBrokerage._id,
+          name: 'EU Blue Card Visa (Aufenthaltstitel)',
+          category: 'Identity & Visa',
+          status: 'verified',
+          isReady: true,
+          ocrConfidence: 99.5,
+          fileName: 'eu_blue_card_visa_lindqvist.pdf',
+          fileSize: '1.2 MB',
+          extractedDetails: 'Valid § 18b Abs. 2 AufenthG (Permanent Employment Status in Bavaria)',
+          sha256Hash: 'c74e89f02b3112d8a4590ef198a287bd04183812'
+        },
+        {
+          dealId: 'DEAL-8491',
+          brokerageId: bavariaBrokerage._id,
+          name: 'Official SCHUFA Credit Certificate (Bonitätsauskunft)',
+          category: 'Financial History',
+          status: 'verified',
+          isReady: true,
+          ocrConfidence: 100.0,
+          fileName: 'schufa_bonitaetsauskunft_2026.pdf',
+          fileSize: '1.5 MB',
+          extractedDetails: 'Schufa Score: 98.4% (Excellent Creditworthiness, 0 Negative Entries)',
+          sha256Hash: 'e112d8a4590ef198a287bd04183812a8f3b20c91'
+        },
+        {
+          dealId: 'DEAL-8491',
+          brokerageId: bavariaBrokerage._id,
+          name: 'Proof of Equity & Savings (Eigenkapitalnachweis)',
+          category: 'Financial History',
+          status: 'verified',
+          isReady: true,
+          ocrConfidence: 99.5,
+          fileName: 'dkb_girokonto_equity_statement.pdf',
+          fileSize: '5.6 MB',
+          extractedDetails: 'Liquid Equity Verified: €180,000 in DKB Girokonto / Tagesgeld',
+          sha256Hash: 'f4590ef198a287bd04183812a8f3b20c9103e87d'
+        }
+      ];
+
+      for (const doc of initialVaultDocs) {
+        await Document.create(doc);
+      }
+      console.log('📁 [Seed] Seeded initial verified documents into MongoDB Document collection');
     }
   } catch (error) {
     console.warn('⚠️ [Seed Note]: Could not complete auto-seed, database may be in offline fallback mode:', error.message);

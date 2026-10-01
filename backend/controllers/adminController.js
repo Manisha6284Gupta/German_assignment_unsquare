@@ -214,12 +214,14 @@ export const provisionBrokerage = async (req, res) => {
         passwordHash: rawPassword,
         role: 'brokerage_admin',
         roleTitle: 'Managing Partner & Licensee',
-        brokerageId: newBrokerage._id,
+        brokerageId: newBrokerage._id || null,
         brokerageName: newBrokerage.name,
         subdomain: newBrokerage.subdomain,
         avatar: '/frontend/assets/images/avatar_team_lead_1790659845812.jpg',
       });
-    } catch {
+      console.log(`✅ [MongoDB Atlas User Insert] Created brokerage_admin in 'users' collection: ${newAdminUser.email} (ID: ${newAdminUser._id})`);
+    } catch (userErr) {
+      console.error('❌ [User.create error in provisionBrokerage]:', userErr.message);
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(rawPassword, salt);
       newAdminUser = {
@@ -229,7 +231,7 @@ export const provisionBrokerage = async (req, res) => {
         passwordHash: hashedPassword,
         role: 'brokerage_admin',
         roleTitle: 'Managing Partner & Licensee',
-        brokerageId: newBrokerage._id,
+        brokerageId: newBrokerage._id || null,
         brokerageName: newBrokerage.name,
         subdomain: newBrokerage.subdomain,
         avatar: '/frontend/assets/images/avatar_team_lead_1790659845812.jpg',
@@ -282,19 +284,40 @@ export const inviteUser = async (req, res) => {
     const cleanEmail = email.toLowerCase().trim();
     const targetRole = (role || 'advisor').toLowerCase().trim();
 
-    // 2. Strict Role Enforcement (Only 'advisor' or 'client' permitted)
-    if (!['advisor', 'client'].includes(targetRole)) {
+    // 2. Strict Role Enforcement (Only allowed system roles permitted)
+    if (!['platform_admin', 'brokerage_admin', 'advisor', 'client'].includes(targetRole)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid role. Authorized administrators may only provision 'advisor' or 'client' accounts.",
+        message: "Invalid role. Role must be 'platform_admin', 'brokerage_admin', 'advisor', or 'client'.",
+      });
+    }
+
+    // Non-platform-admins cannot create other platform_admins
+    const requester = req.user || {};
+    if (targetRole === 'platform_admin' && requester.role && requester.role !== 'platform_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Security Violation: Only existing Platform SuperAdmins can provision new SuperAdmin credentials.',
       });
     }
 
     // 3. Determine Tenant Scoping from Requester or Request Body
-    const requester = req.user || {};
-    const scopedBrokerageId = requester.brokerageId ? (requester.brokerageId._id || requester.brokerageId) : null;
-    const scopedBrokerageName = brokerageName || requester.brokerageName || 'Bavaria FinOps Partners';
-    const scopedSubdomain = subdomain || requester.subdomain || 'bavaria-finops';
+    let scopedBrokerageId = targetRole === 'platform_admin' ? null : (requester.brokerageId ? (requester.brokerageId._id || requester.brokerageId) : null);
+    const scopedBrokerageName = targetRole === 'platform_admin' ? 'LeadFlow Global Infrastructure' : (brokerageName || requester.brokerageName || 'Bavaria FinOps Partners');
+    const scopedSubdomain = targetRole === 'platform_admin' ? 'platform-master' : (subdomain || requester.subdomain || 'bavaria-finops');
+
+    if (!scopedBrokerageId && targetRole !== 'platform_admin') {
+      try {
+        const foundB = await Brokerage.findOne({
+          $or: [{ subdomain: scopedSubdomain }, { name: scopedBrokerageName }]
+        });
+        if (foundB && foundB._id) {
+          scopedBrokerageId = foundB._id;
+        }
+      } catch {
+        // ignore
+      }
+    }
 
     // 4. Duplicate Check
     let existingUser = null;
@@ -312,23 +335,41 @@ export const inviteUser = async (req, res) => {
     }
 
     // 5. Create & Save User Document in MongoDB Atlas
-    const rawPassword = password || (targetRole === 'client' ? `Client#${dealId ? dealId.replace(/[^0-9]/g, '') : '8491'}!` : 'Berlin#2026!');
+    const rawPassword = password || (
+      targetRole === 'platform_admin' ? 'SuperAdmin#2026!' :
+      targetRole === 'brokerage_admin' ? 'Munich#2026!' :
+      targetRole === 'client' ? `Client#${dealId ? dealId.replace(/[^0-9]/g, '') : '8491'}!` : 
+      'Berlin#2026!'
+    );
     
+    const defaultAvatar = targetRole === 'platform_admin'
+      ? '/frontend/assets/images/avatar_mern_developer_1790659832213.jpg'
+      : targetRole === 'brokerage_admin'
+      ? '/frontend/assets/images/avatar_team_lead_1790659845812.jpg'
+      : targetRole === 'client'
+      ? '/frontend/assets/images/avatar_team_lead_1790659845812.jpg'
+      : '/frontend/assets/images/avatar_product_manager_1790659859501.jpg';
+
+    const defaultRoleTitle = targetRole === 'platform_admin'
+      ? 'Platform SuperAdmin (LeadFlow Core)'
+      : targetRole === 'brokerage_admin'
+      ? 'Managing Partner & Brokerage Admin'
+      : targetRole === 'advisor'
+      ? 'Senior Mortgage Advisor'
+      : 'Expat Borrower Client';
+
     const documentToSave = {
       name: name.trim(),
       email: cleanEmail,
       passwordHash: rawPassword, // userSchema pre-save hook handles bcryptjs hash
       role: targetRole,
-      roleTitle: roleTitle || (targetRole === 'advisor' ? 'Senior Mortgage Advisor' : 'Expat Borrower Client'),
-      brokerageId: scopedBrokerageId,
+      roleTitle: roleTitle || defaultRoleTitle,
+      brokerageId: scopedBrokerageId || null,
       brokerageName: scopedBrokerageName,
       subdomain: scopedSubdomain,
       dealId: targetRole === 'client' ? (dealId || 'DEAL-8491') : null,
-      avatar: targetRole === 'client' 
-        ? '/frontend/assets/images/avatar_team_lead_1790659845812.jpg'
-        : '/frontend/assets/images/avatar_product_manager_1790659859501.jpg',
+      avatar: defaultAvatar,
       isActive: true,
-      createdAt: new Date().toISOString(),
     };
 
     console.log('\n📝 --------------------------------------------------------');
@@ -342,8 +383,7 @@ export const inviteUser = async (req, res) => {
     let createdUser;
     try {
       createdUser = await User.create(documentToSave);
-      console.log('✅ [MongoDB Atlas Document Saved Successfully]:');
-      console.log({
+      console.log('✅ [MongoDB Atlas Document Saved Successfully]:', {
         _id: createdUser._id ? createdUser._id.toString() : 'generated-id',
         name: createdUser.name,
         email: createdUser.email,
@@ -352,15 +392,16 @@ export const inviteUser = async (req, res) => {
         status: 'INSERTED_INTO_MONGODB'
       });
     } catch (saveError) {
-      console.warn('⚠️ [MongoDB Atlas Standard Insert Fallback]:', saveError.message);
+      console.error('❌ [User.create Failed with Error]:', saveError.message);
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(rawPassword, salt);
       createdUser = {
         _id: generateObjectId(),
         ...documentToSave,
         passwordHash: hashedPassword,
+        createdAt: new Date().toISOString(),
       };
-      console.log('✅ [Document Saved in Memory Store]:', {
+      console.log('⚠️ [Document Saved in Local Fallback Store]:', {
         _id: createdUser._id,
         name: createdUser.name,
         email: createdUser.email

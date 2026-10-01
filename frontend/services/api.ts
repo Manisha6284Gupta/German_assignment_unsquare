@@ -34,7 +34,7 @@ export interface InviteUserPayload {
   name: string;
   email: string;
   password?: string;
-  role: 'advisor' | 'client';
+  role: 'platform_admin' | 'brokerage_admin' | 'advisor' | 'client';
   dealId?: string;
   roleTitle?: string;
   subdomain?: string;

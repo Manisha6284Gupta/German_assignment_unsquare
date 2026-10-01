@@ -187,7 +187,7 @@ export const PlatformAdminDashboard: React.FC<PlatformAdminDashboardProps> = ({
   // New User Form
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserRole, setNewUserRole] = useState<'advisor' | 'client'>('advisor');
+  const [newUserRole, setNewUserRole] = useState<'platform_admin' | 'brokerage_admin' | 'advisor' | 'client'>('advisor');
   const [newUserTitle, setNewUserTitle] = useState('Senior Mortgage Advisor');
 
   const filteredBrokerages = brokerages.filter(b => 
@@ -272,11 +272,15 @@ export const PlatformAdminDashboard: React.FC<PlatformAdminDashboardProps> = ({
         id: res.data?.id || `USR-0${users.length + 1}`,
         name: newUserName.trim(),
         email: newUserEmail.toLowerCase().trim(),
-        role: newUserRole === 'advisor' ? (newUserTitle || 'Licensed Advisor') : 'Expat Borrower',
-        brokerage: selectedBrokerageForUser,
+        role: newUserRole === 'platform_admin' ? 'Platform SuperAdmin' :
+              newUserRole === 'brokerage_admin' ? 'Brokerage Admin' :
+              newUserRole === 'advisor' ? (newUserTitle || 'Licensed Advisor') : 'Expat Borrower',
+        brokerage: newUserRole === 'platform_admin' ? 'LeadFlow Global Infrastructure' : selectedBrokerageForUser,
         city: selectedBrokerageObj?.city || 'Munich',
         status: 'Active',
-        license: newUserRole === 'advisor' ? '§ 34i GewO Active' : 'Client Dossier Created'
+        license: newUserRole === 'platform_admin' ? 'System Master Access' :
+                 newUserRole === 'brokerage_admin' ? 'Brokerage Licensee (§ 34i)' :
+                 newUserRole === 'advisor' ? '§ 34i GewO Active' : 'Client Dossier Created'
       };
 
       const updatedUsers = [newUserObj, ...users];
@@ -983,10 +987,19 @@ export const PlatformAdminDashboard: React.FC<PlatformAdminDashboardProps> = ({
                   <label className="block text-slate-300 font-medium mb-1">Account Role</label>
                   <select
                     value={newUserRole}
-                    onChange={(e) => setNewUserRole(e.target.value as 'advisor' | 'client')}
+                    onChange={(e) => {
+                      const val = e.target.value as 'platform_admin' | 'brokerage_admin' | 'advisor' | 'client';
+                      setNewUserRole(val);
+                      if (val === 'platform_admin') setNewUserTitle('Platform SuperAdmin (LeadFlow Core)');
+                      else if (val === 'brokerage_admin') setNewUserTitle('Managing Partner & Brokerage Admin');
+                      else if (val === 'advisor') setNewUserTitle('Senior Mortgage Advisor');
+                      else setNewUserTitle('Expat Borrower Client');
+                    }}
                     className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
                   >
-                    <option value="advisor">Licensed Mortgage Advisor</option>
+                    <option value="platform_admin">Platform SuperAdmin (Full System Master)</option>
+                    <option value="brokerage_admin">Brokerage Admin (Branch Owner)</option>
+                    <option value="advisor">Licensed Mortgage Advisor (§ 34i)</option>
                     <option value="client">Expat Borrower Client</option>
                   </select>
                 </div>

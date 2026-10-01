@@ -22,19 +22,32 @@ const documentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      default: 'Verified via DATEV OCR',
+      default: 'verified',
     },
     isReady: {
       type: Boolean,
       default: true,
     },
-    verifiedDate: {
-      type: Date,
-      default: Date.now,
-    },
     ocrConfidence: {
       type: Number,
       default: 99.4,
+    },
+    fileName: {
+      type: String,
+    },
+    fileSize: {
+      type: String,
+      default: '2.4 MB',
+    },
+    extractedDetails: {
+      type: String,
+    },
+    sha256Hash: {
+      type: String,
+    },
+    verifiedDate: {
+      type: Date,
+      default: Date.now,
     },
   },
   {
