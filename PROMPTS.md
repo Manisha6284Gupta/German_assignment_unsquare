@@ -1,43 +1,33 @@
-# LeadFlow CRM 🚀
+# LeadFlow CRM — System Design & Master Execution Prompts
 
-> **Multi-Tenant CRM & Client Portal Engine for Mortgage Brokerages**  
-> Built with Next.js, TypeScript, Node.js, and MongoDB / Prisma.
-
----
-
-## 📌 Project Overview
-
-**LeadFlow CRM** is a full-stack multi-tenant platform designed specifically for mortgage and financial brokerages. It provides end-to-end management of client acquisition, automated lead ingestion, real-time pipeline collaboration, asynchronous document verification, and stage-based workflow automation—all while strictly isolating data across individual brokerage tenants.
+This document contains three distinct master prompts designed to architect, evaluate, and sequence the development of **LeadFlow CRM** using Next.js (App Router), TypeScript, Node.js, Prisma, and MongoDB.
 
 ---
 
-## ✨ Key Features
+## 1. How-To Master Prompt: Architecture, Engineering & Implementation
 
-### 🏢 Multi-Tenancy & Security
-* **Tenant Data Isolation:** Serve multiple brokerage client organizations from a single deployment. Every request and database query is scoped by `brokerageId` to guarantee strict data segregation.
-* **Role-Based Access Control (RBAC):** Configured for 4 distinct user roles:
-  * **Platform Admin:** Tenant onboarding, platform metrics, and system health monitoring.
-  * **Brokerage Admin:** Team management, pipeline configuration, email templates, and trigger rules.
-  * **Advisor:** Lead and client management, Kanban pipeline operations, document review, and task execution.
-  * **Client:** Interactive portal access, active case status tracking, and secure document dossier uploads.
+> **Goal:** Use this prompt to instruct an engineer or AI coding assistant (e.g., Cursor, Claude, ChatGPT) to generate the technical setup, schemas, API handlers, and UI modules for LeadFlow CRM.
 
----
+text
+Act as a Principal Software Architect. Design and engineer a multi-tenant CRM and Mortgage Client Portal named "LeadFlow CRM" using Next.js (App Router), TypeScript, Prisma, MongoDB, Tailwind CSS, and WebSockets/Pusher.
 
-### 🔄 Ingestion & Live Workflows
-* **Automated External Ingestion:** RESTful webhook endpoints to receive lead data automatically from external lead providers and landing pages.
-* **Lead Deduplication Engine:** Pre-persists checks match incoming lead attributes (email, phone, national ID) against existing records under the target brokerage to prevent orphaned duplicates.
-* **Collaborative Live Kanban Board:** Drag-and-drop pipeline interface (`New` → `Contacted` → `Qualified` → `Proposal` → `Won`/`Lost`) synced live across all active advisor screens via real-time WebSocket events.
+Ensure the implementation addresses the following three core technical pillars:
 
----
+1. Core Architecture & Multi-Tenant Isolation
+   - Multi-Tenant Data Isolation: Design a single deployment serving multiple brokerages where every database model and query automatically scopes by `brokerageId` to guarantee absolute data segregation.
+   - Role-Based Access Control (RBAC): Implement strict RBAC across 4 distinct user roles:
+     * Platform Admin: System-wide health, tenant provisioning, and global metrics.
+     * Brokerage Admin: Organization setup, team roles, custom pipeline stages, email templates, and trigger rules.
+     * Advisor: Lead/client management, Kanban drag-and-drop operations, task execution, and document reviews.
+     * Client: Authenticated portal access, application status tracking, and dossier document uploads.
 
-### 📂 Dossier Verification & Automations
-* **Client Self-Service Portal:** 1-click lead conversion into active Client accounts with secure login access and assigned case folders.
-* **Asynchronous Dossier Queue:** Background job processing worker for uploaded client documents (IDs, payslips, bank statements) simulating verification latency and stochastic error states.
-* **Automated Workflow Triggers:**
-  * **Email Automations:** Dynamic HTML templates supporting placeholder tags (e.g., `{{client.name}}`, `{{advisor.name}}`) triggered automatically on stage entry.
-  * **Task & SLA Triggers:** Auto-generate stage-linked actionable tasks with due dates, advisor assignments, and visual overdue flags.
-* **Low-Latency Analytics:** Instant performance dashboard displaying pipeline volumes, conversion rates, and stage bottleneck metrics.
+2. Lead Ingestion & Live Pipeline Engine
+   - Automated Lead Ingestion: Create a public REST API route (`/api/v1/leads/ingest`) secured by tenant API keys to ingest leads from external sources (e.g., webhooks, landing pages).
+   - Pre-Ingestion Deduplication: Implement matching logic checking email, phone number, or national ID against existing records within the target `brokerageId` before creating duplicates.
+   - Live Collaborative Kanban Board: Build a real-time Kanban board (`New` → `Contacted` → `Qualified` → `Proposal` → `Won`/`Lost`) synced live across all active advisor sessions using WebSockets or Server-Sent Events (SSE).
 
----
-
-## 🛠️ System Architecture
+3. Dossier Queue, Automations & Analytics
+   - Client Portal Provisioning: Enable Advisors to convert qualified leads into active Client accounts with generated credentials and assigned case folders in 1 click.
+   - Asynchronous Dossier Verification: Build a document upload portal integrated with a background worker queue (e.g., BullMQ / Redis or Upstash) that simulates verification delays (3–10s) and stochastic failure states (e.g., 15% failure rate for invalid uploads).
+   - Workflow Automation Engine: Create HTML email templates supporting dynamic variable interpolation (e.g., `{{client.name}}`, `{{advisor.name}}`), automated stage-entry email triggers, and stage-linked task creation with due dates and visual overdue flags.
+   - Low-Latency Analytics: Implement optimized database aggregation pipelines to render live pipeline volumes, conversion rates, and stage bottleneck metrics without stale data drift.
