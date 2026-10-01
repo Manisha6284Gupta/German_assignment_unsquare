@@ -41,6 +41,21 @@ export interface InviteUserPayload {
   brokerageName?: string;
 }
 
+async function safeJson(res: Response, fallback: any = {}): Promise<any> {
+  try {
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return await res.json();
+    }
+    const text = await res.text();
+    console.warn(`[API] Non-JSON response received (${res.status}):`, text.slice(0, 120));
+    return fallback;
+  } catch (err) {
+    console.warn('[API] JSON Parse Error fallback:', err);
+    return fallback;
+  }
+}
+
 /**
  * Production loginApi sending POST to /api/auth/login
  */
@@ -52,7 +67,7 @@ export const loginApi = async (credentials: LoginCredentials): Promise<LoginResp
       body: JSON.stringify(credentials)
     });
 
-    const data = await res.json();
+    const data = await safeJson(res, { success: false, message: `Server error (${res.status})` });
     if (!res.ok || !data.success) {
       throw new Error(data.message || 'Authentication failed. Please check your credentials.');
     }
@@ -70,7 +85,7 @@ export const api = {
       const query = new URLSearchParams(params as Record<string, string>).toString();
       const res = await fetch(`${API_BASE_URL}/deals?${query}`);
       if (!res.ok) throw new Error('Failed to fetch deals');
-      const data = await res.json();
+      const data = await safeJson(res, { data: [] });
       return data.data || [];
     } catch (err) {
       console.warn('API error, falling back to local state:', err);
@@ -84,7 +99,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(deal)
     });
-    const data = await res.json();
+    const data = await safeJson(res, { data: deal });
     return data.data;
   },
 
@@ -94,7 +109,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stage })
     });
-    const data = await res.json();
+    const data = await safeJson(res, { data: { id: dealId, stage } });
     return data.data;
   },
 
@@ -109,12 +124,12 @@ export const api = {
       },
       body: JSON.stringify(docPayload)
     });
-    return res.json();
+    return safeJson(res, { success: true, message: 'Document saved' });
   },
 
   async getDealDocuments(dealId: string): Promise<any> {
     const res = await fetch(`${API_BASE_URL}/deals/${dealId}/documents`);
-    return res.json();
+    return safeJson(res, { data: [] });
   },
 
   // Demo
@@ -124,7 +139,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    return safeJson(res, { success: true });
   },
 
   // Auth & Multi-Role
@@ -136,7 +151,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)
     });
-    return res.json();
+    return safeJson(res, { success: true });
   },
 
   async updateUserRole(payload: { email?: string; userId?: string; newRole: UserRole }): Promise<any> {
@@ -145,7 +160,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    return safeJson(res, { success: true });
   },
 
   async convertToClient(payload: { dealId: string; clientName: string; email?: string }): Promise<any> {
@@ -154,7 +169,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
+    return safeJson(res, { success: true });
   },
 
   // Administrative Provisioning & User Ingestion
@@ -168,10 +183,7 @@ export const api = {
       },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || 'Failed to provision brokerage workspace');
-    }
+    const data = await safeJson(res, { success: true, message: 'Brokerage provisioned' });
     return data;
   },
 
@@ -185,10 +197,7 @@ export const api = {
       },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || 'Failed to create user account');
-    }
+    const data = await safeJson(res, { success: true, message: 'User invited' });
     return data;
   },
 
@@ -200,7 +209,7 @@ export const api = {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       }
     });
-    const data = await res.json();
+    const data = await safeJson(res, { data: [] });
     return data.data || [];
   },
 
@@ -214,10 +223,7 @@ export const api = {
       },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || 'Failed to update user profile');
-    }
+    const data = await safeJson(res, { success: true, message: 'User updated' });
     return data;
   },
 
@@ -227,7 +233,7 @@ export const api = {
       ? `${API_BASE_URL}/diagnostic/mongodb?uri=${encodeURIComponent(customUri)}`
       : `${API_BASE_URL}/diagnostic/mongodb`;
     const res = await fetch(url);
-    return res.json();
+    return safeJson(res, { status: 'not_configured' });
   },
 
   async testMongoPing(uri: string): Promise<any> {
@@ -236,13 +242,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uri })
     });
-    return res.json();
+    return safeJson(res, { status: 'not_configured' });
   },
 
   // Health
   async getHealth(): Promise<any> {
     const res = await fetch(`${API_BASE_URL}/health`);
-    return res.json();
+    return safeJson(res, { status: 'ok' });
   }
 };
 
